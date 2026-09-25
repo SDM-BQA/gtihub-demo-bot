@@ -1,23 +1,38 @@
-import type { Rule } from '../generated/prisma/client.js';
-import type { ActionType } from '../generated/prisma/enums.js';
-import type { NormalizedEvent } from '../github/normalize.js';
+import { prisma } from '../db/prisma.js';
+import { HttpError } from '../utils/httpError.js';
+import type { RuleInput } from '../validation/rule.schema.js';
 
-const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+// Every query is scoped to the signed-in user's own repos, so changing an ID in the URL can't reach someone else's data.
+// Anything the user doesn't own is a 404 (not 403), so we don't even reveal that it exists.
+const ownedBy = (userId: number) => ({ installation: { userId } });
 
-// All filled-in conditions must match (AND). Empty conditions are ignored. Case-insensitive.
-export function matchesRule(rule: Rule, event: NormalizedEvent): boolean {
-  if (!rule.enabled || rule.trigger !== event.trigger) return false;
-  if (rule.titleContains && !event.title.toLowerCase().includes(rule.titleContains.trim().toLowerCase())) return false;
-  if (rule.author && !same(rule.author, event.author)) return false;
-  if (rule.hasLabel && !event.labels.some((label) => same(label, rule.hasLabel!))) return false;
-  return true;
+async function assertRepoOwned(userId: number, repoId: number) {
+  const repo = await prisma.repo.findFirst({ where: { id: repoId, active: true, ...ownedBy(userId) }, select: { id: true } });
+  if (!repo) throw new HttpError(404, 'Repository not found');
 }
 
-// The actions a rule asks for, in the order they run. Label and comment need an issue/PR number, so pushes only get Slack.
-export function plannedActions(rule: Rule, event: NormalizedEvent): ActionType[] {
-  const actions: ActionType[] = [];
-  if (rule.addLabel && event.number !== null) actions.push('ADD_LABEL');
-  if (rule.comment && event.number !== null) actions.push('COMMENT');
-  if (rule.notifySlack) actions.push('SLACK');
-  return actions;
+async function assertRuleOwned(userId: number, ruleId: number) {
+  const rule = await prisma.rule.findFirst({ where: { id: ruleId, repo: ownedBy(userId) }, select: { id: true } });
+  if (!rule) throw new HttpError(404, 'Rule not found');
+}
+
+export async function listRules(userId: number, repoId: number) {
+  await assertRepoOwned(userId, repoId);
+  return prisma.rule.findMany({ where: { repoId }, orderBy: { createdAt: 'asc' } });
+}
+
+export async function createRule(userId: number, repoId: number, input: RuleInput) {
+  await assertRepoOwned(userId, repoId);
+  return prisma.rule.create({ data: { ...input, repoId } });
+}
+
+export async function updateRule(userId: number, ruleId: number, input: RuleInput) {
+  await assertRuleOwned(userId, ruleId);
+  return prisma.rule.update({ where: { id: ruleId }, data: input });
+}
+
+// Past action logs keep their history: ActionLog.ruleId is set to null (onDelete: SetNull).
+export async function deleteRule(userId: number, ruleId: number) {
+  await assertRuleOwned(userId, ruleId);
+  await prisma.rule.delete({ where: { id: ruleId } });
 }

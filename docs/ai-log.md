@@ -118,3 +118,12 @@ Format: **what happened → how it was noticed → fix**.
 - Observed: the local dev server and Render share one Neon DB, so the local worker processed live events as soon as it
   restarted (before any rule existed, both events were marked DONE with no actions). Harmless thanks to SKIP LOCKED,
   but for clean tests the local dev server should be stopped (or pointed at a separate Neon branch).
+
+### Chunk 6: rules CRUD
+
+- Security: every rule/repo query is scoped to `installation.userId = session user`, so changing an ID in the URL can't reach
+  another user's rules (IDOR). Non-owned → 404, not 403 (doesn't reveal existence). Verified with userId 999 → 404 on list/edit/delete.
+- Validation: one zod schema (`validation/rule.schema.ts`) behind a generic `validateBody` middleware. Blank strings → null
+  (an empty `titleContains` would otherwise be stored as "" and is easy to mistake for a real condition); at least one action required.
+- Refactor: rule *matching* moved to `worker/matchRules.ts` (only the worker uses it); `services/rules.service.ts` is now CRUD.
+- UI: repo sidebar → rules panel; one `RuleForm` reused for create and edit; the toggle reuses PUT (no separate PATCH endpoint).

@@ -63,6 +63,8 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
 - Sessions are mounted only on `/auth` and `/api` (not `/health` or webhooks). Cookie: httpOnly, secure in prod, sameSite=lax.
   The session ID is regenerated on login.
 - Octokit clients come from `github/app.ts` (`githubApp`). For bot actions use `githubApp.getInstallationOctokit(id)`.
+- Every user-data query is scoped to the owner (`installation: { userId }`); anything not owned is a **404** (see
+  `services/rules.service.ts`). Request bodies go through `validateBody(zodSchema)`; route IDs go through `parseId`.
 
 ## Working style with the developer
 

@@ -6,15 +6,15 @@ Every item from the assignment brief, with how we meet it. Tick an item only aft
 - [x] **C1** Deployed, publicly reachable web app: Render web service (API + React build on one origin)
 - [ ] **C2** GitHub sign-in and connecting a repo the user owns: GitHub App user login + installing the app on selected repos
 - [x] **C3** Webhook endpoint receives ≥2 event types and records them: `issues`, `pull_request`, `push` → `Event` table
-- [ ] **C4** Write back to GitHub for ≥1 event type: add a label and/or post a comment via an installation token
-- [ ] **C5** Slack notification when a configured event occurs: Slack Incoming Webhook, triggered by a rule action
+- [x] **C4** Write back to GitHub for ≥1 event type: add a label and/or post a comment via an installation token
+- [x] **C5** Slack notification when a configured event occurs: Slack Incoming Webhook, triggered by a rule action
 - [ ] **C6** Dashboard (behind login) with received events and the actions taken
 - [ ] **C7** README.md: run locally and how it was deployed
 
 ## Stretch goals
 - [ ] **S1** Rules configurable in the UI: match on keywords, author and labels
 - [ ] **S2** AI step: summary, suggested label and priority, shown in Slack **and** on the dashboard (Groq, free tier)
-- [ ] **S3** Authenticate as a GitHub App: JWT → installation tokens (octokit)
+- [x] **S3** Authenticate as a GitHub App: JWT → installation tokens (octokit)
 - [ ] **S4** Multiple repos per user: one installation can cover many repos; rules are scoped per repo
 - [ ] **S5** Observability: structured logs (pino) and a visible history of failures and retries in the dashboard
 
@@ -24,7 +24,7 @@ Every item from the assignment brief, with how we meet it. Tick an item only aft
   - OAuth callback: `state` parameter checked against the session
   - Install setup callback: `installation_id` verified against the logged-in user's own installations (it cannot be claimed by someone else)
   - Dashboard API: session cookie (httpOnly, secure, sameSite=lax), JSON-only requests
-- [ ] **Q2** No duplicate side effects: dedupe by delivery ID, plus one row per (event, action), so a retry skips actions that already succeeded
+- [x] **Q2** No duplicate side effects: dedupe by delivery ID, plus one row per (event, action), so a retry skips actions that already succeeded
 - [ ] **Q3** No silently lost events
   - The event is saved before we reply; if the DB is down we return 5xx so GitHub marks the delivery failed
   - Actions retry with backoff; the final failure stays visible in the dashboard

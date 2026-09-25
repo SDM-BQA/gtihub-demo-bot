@@ -2,7 +2,7 @@ import { prisma } from '../db/prisma.js';
 import type { ActionStatus, ActionType } from '../generated/prisma/enums.js';
 import { normalize } from '../github/normalize.js';
 import type { WebhookPayload } from '../github/payloads.js';
-import { matchesRule, plannedActions } from '../services/rules.service.js';
+import { matchesRule, plannedActions } from './matchRules.js';
 import { logger } from '../utils/logger.js';
 import { actionRunners } from './actions/index.js';
 
