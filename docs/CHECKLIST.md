@@ -12,7 +12,7 @@ Every item from the assignment brief, with how we meet it. Tick an item only aft
 - [ ] **C7** README.md: run locally and how it was deployed
 
 ## Stretch goals
-- [ ] **S1** Rules configurable in the UI: match on keywords, author and labels
+- [x] **S1** Rules configurable in the UI: match on keywords, author and labels
 - [ ] **S2** AI step: summary, suggested label and priority, shown in Slack **and** on the dashboard (Groq, free tier)
 - [x] **S3** Authenticate as a GitHub App: JWT → installation tokens (octokit)
 - [ ] **S4** Multiple repos per user: one installation can cover many repos; rules are scoped per repo
