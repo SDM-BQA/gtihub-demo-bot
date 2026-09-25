@@ -78,3 +78,43 @@ Format: **what happened → how it was noticed → fix**.
   try/catch on a unique-constraint error. It is one statement and has no race between "check" and "insert".
 - Near miss: the fake test event pointed at real issue #1 of the test repo; deleted it before building the worker so the
   bot wouldn't label or comment on a real issue.
+
+### Chunk 4 (live): no events arrived; diagnosed from GitHub's delivery log
+
+- Opened a real issue on the test repo; nothing was recorded. Instead of guessing, queried GitHub as the app
+  (`GET /app`, `GET /app/hook/config`, `GET /app/hook/deliveries`) with a small script.
+- **Cause 1:** `subscribed events: []`. The GitHub App was created without ticking Issues / Pull request / Push (those
+  checkboxes stay disabled until the matching permissions are set, so they're easy to miss). My setup instructions listed
+  them, but I didn't warn about the disabled checkboxes. Fixed in the app settings.
+- **Cause 2 (confirmed prediction):** two deliveries failed with `context deadline exceeded`: Render's free-tier cold start
+  took longer than GitHub's 10 s timeout. GitHub does **not** retry these automatically, so they would be lost.
+  → Planned fix (step 9): keep-alive pinger + a sweeper that redelivers failed deliveries via `/app/hook/deliveries`.
+
+### Chunk 4 (live): every delivery returned 401 Invalid signature
+
+- After subscribing to events, deliveries arrived but all got `401 Invalid signature`: the signature check did its job,
+  but the secret on Render didn't match the GitHub App's.
+- **Diagnosed** without exposing the secret: fetched a failed delivery's payload and signature from `GET /app/hook/deliveries/{id}`
+  and recomputed the HMAC locally with the `.env` secret. It matched, which proved the Render value was the wrong one
+  (it was fixed by re-pasting it from `.env`). Confusion came from my earlier "delete the duplicate line" advice, which read like
+  "delete the variable". Lesson: be explicit about *which line* to delete.
+- **Verified live** with GitHub's redelivery API (`POST /app/hook/deliveries/{id}/attempts`):
+  a previously failed delivery → `202 recorded` (lost event recovered); an already recorded one → `202 duplicate`.
+  GitHub redeliveries keep the same `X-GitHub-Delivery` GUID, which is what makes the dedupe work.
+
+### Chunk 5: worker, tested against the unhappy paths
+
+- Design: events are claimed with `UPDATE … WHERE id = (SELECT … FOR UPDATE SKIP LOCKED)`, which also sets a **10-minute lease**
+  (`nextAttemptAt = now() + 10 min`). A crash mid-event can't leave it stuck in PROCESSING; it's re-claimed when the lease expires.
+- Decision: no hard-coded rule. Seeded one real `Rule` row, so the worker used the real matching code from the start.
+- Decision: comments carry a hidden marker `<!-- gh-bot:event-X:rule-Y -->` and are only posted if no comment with it exists.
+  ActionLog alone can't cover "comment posted, then crashed before the log write".
+- Verified (on real issues in the test repo):
+  - happy path: label + comment + Slack → DONE
+  - reprocessing a DONE event: all actions skipped, still 1 comment
+  - ActionLog COMMENT row deleted (simulated crash) → "comment already posted", still 1 comment
+  - broken Slack URL → SLACK FAILED (error text has no secret), event PENDING, retry in 60 s;
+    after backoff, only SLACK re-ran (attempts 2) → DONE
+- Observed: the local dev server and Render share one Neon DB, so the local worker processed live events as soon as it
+  restarted (before any rule existed, both events were marked DONE with no actions). Harmless thanks to SKIP LOCKED,
+  but for clean tests the local dev server should be stopped (or pointed at a separate Neon branch).

@@ -1,5 +1,6 @@
 import { prisma } from '../db/prisma.js';
 import { normalize } from '../github/normalize.js';
+import { wakeWorker } from '../worker/worker.js';
 import type { WebhookContext } from './types.js';
 
 // issues / pull_request / push: save the event for the worker. No GitHub or Slack calls here; we must reply fast.
@@ -31,5 +32,8 @@ export async function recordEvent({ deliveryId, githubEvent, payload }: WebhookC
     skipDuplicates: true,
   });
 
-  return count === 0 ? 'duplicate: already recorded' : 'recorded';
+  if (count === 0) return 'duplicate: already recorded';
+
+  wakeWorker(); // process it right away, after the response is sent (the worker runs async)
+  return 'recorded';
 }

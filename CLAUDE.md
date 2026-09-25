@@ -27,7 +27,10 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
 ## Architecture rules
 
 - **Save first, process later.** The webhook route verifies the signature, inserts the Event, and replies 202. It does no other work.
-- The worker claims pending events with `FOR UPDATE SKIP LOCKED` and retries failed actions with backoff.
+- The worker (`worker/`) claims events with `FOR UPDATE SKIP LOCKED` and a 10-min lease (`queue.ts`), runs the matching rules'
+  actions (`processEvent.ts`), and retries failures with backoff 1m/5m/15m/1h (max 5 attempts, then FAILED).
+  Actions live in `worker/actions/` (one file each, registered in `index.ts`). Comments use a hidden marker to stay idempotent.
+- Local dev and Render share one Neon DB, so a running local server also processes live events. Stop it for clean live tests.
 - **No constant DB polling.** Neon's free tier suspends when idle and caps compute hours, so a 5-second poll would drain the
   quota. The worker wakes only when (a) the webhook route saves a new event, (b) a retry timer for the next `nextAttemptAt` fires, or
   (c) the server starts. `/health` never touches the DB (Render and the keep-alive pinger call it constantly).
@@ -37,7 +40,6 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
 - Payloads are normalized once (`github/normalize.ts`) so rules and actions never touch raw GitHub payloads.
 - Test webhooks locally with `npm run webhook:test -w server -- --repo-id <githubRepoId> [--delivery <id>] [--bad-signature]`.
 - One-off DB scripts must call `pool.end()` (from `db/pool.ts`), or Node never exits.
-- Actions live in a registry (`worker/actions/`); one file per action. No if/else chains on action type.
 - The bot only reacts to `opened` actions and ignores `sender.type === "Bot"`, so it never triggers itself.
 
 ## Code style

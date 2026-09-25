@@ -3,9 +3,9 @@
 Every item from the assignment brief, with how we meet it. Tick an item only after it has been tested on the **live URL**.
 
 ## Core requirements
-- [ ] **C1** Deployed, publicly reachable web app: Render web service (API + React build on one origin)
+- [x] **C1** Deployed, publicly reachable web app: Render web service (API + React build on one origin)
 - [ ] **C2** GitHub sign-in and connecting a repo the user owns: GitHub App user login + installing the app on selected repos
-- [ ] **C3** Webhook endpoint receives ≥2 event types and records them: `issues`, `pull_request`, `push` → `Event` table
+- [x] **C3** Webhook endpoint receives ≥2 event types and records them: `issues`, `pull_request`, `push` → `Event` table
 - [ ] **C4** Write back to GitHub for ≥1 event type: add a label and/or post a comment via an installation token
 - [ ] **C5** Slack notification when a configured event occurs: Slack Incoming Webhook, triggered by a rule action
 - [ ] **C6** Dashboard (behind login) with received events and the actions taken

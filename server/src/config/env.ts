@@ -19,6 +19,9 @@ const envSchema = z.object({
   // The .pem private key, base64-encoded so it fits on one line in .env and in Render.
   GITHUB_PRIVATE_KEY_BASE64: z.string().min(1),
   GITHUB_WEBHOOK_SECRET: z.string().min(20),
+
+  // Slack Incoming Webhook (api.slack.com/apps → your app → Incoming Webhooks). Anyone with this URL can post to the channel.
+  SLACK_WEBHOOK_URL: z.url(),
 });
 
 const parsed = envSchema.safeParse(process.env);
