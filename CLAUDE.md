@@ -32,7 +32,11 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
   quota. The worker wakes only when (a) the webhook route saves a new event, (b) a retry timer for the next `nextAttemptAt` fires, or
   (c) the server starts. `/health` never touches the DB (Render and the keep-alive pinger call it constantly).
 - Idempotency: `Event.deliveryId` is unique; `ActionLog` is unique on (eventId, actionType, value), so an action that already succeeded is skipped on retry.
-- Payloads are normalized once (`worker/normalize.ts`) so rules and actions never touch raw GitHub payloads.
+- Webhook flow: `routes/webhook.routes.ts` (express.raw) → `middleware/verifyGithubSignature.ts` → `webhooks/handlers.ts`
+  (a lookup table keyed by `X-GitHub-Event`). Duplicates return **202**, not an error, so GitHub doesn't retry them.
+- Payloads are normalized once (`github/normalize.ts`) so rules and actions never touch raw GitHub payloads.
+- Test webhooks locally with `npm run webhook:test -w server -- --repo-id <githubRepoId> [--delivery <id>] [--bad-signature]`.
+- One-off DB scripts must call `pool.end()` (from `db/pool.ts`), or Node never exits.
 - Actions live in a registry (`worker/actions/`); one file per action. No if/else chains on action type.
 - The bot only reacts to `opened` actions and ignores `sender.type === "Bot"`, so it never triggers itself.
 
@@ -52,6 +56,11 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
 - Never log tokens, secrets, or full webhook payloads; the pino logger redacts known keys.
 - No secret or GitHub token ever reaches the client bundle or an API response.
 - Webhook signature checks run on the **raw** body with `crypto.timingSafeEqual`.
+- GitHub **user** tokens are never stored: used once in the OAuth callback, then discarded. Sessions hold only `userId`/`oauthState`.
+- Never trust an `installation_id` from a URL; link installations only via the user's own `GET /user/installations`.
+- Sessions are mounted only on `/auth` and `/api` (not `/health` or webhooks). Cookie: httpOnly, secure in prod, sameSite=lax.
+  The session ID is regenerated on login.
+- Octokit clients come from `github/app.ts` (`githubApp`). For bot actions use `githubApp.getInstallationOctokit(id)`.
 
 ## Working style with the developer
 

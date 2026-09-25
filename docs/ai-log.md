@@ -32,7 +32,7 @@ Format: **what happened → how it was noticed → fix**.
 ### Chunk 1: near miss on the Render build
 
 - Setting `NODE_ENV=production` on Render also applies at _build_ time, so `npm ci` would skip devDependencies (`typescript`, `vite`) and the build would fail.
-- **Caught** during review before the first deploy; the build command uses `npm ci --include=dev`. _(Confirm on the first deploy.)_
+- **Caught** during review before the first deploy; the build command uses `npm ci --include=dev`. **Confirmed:** first Render deploy built successfully with this flag.
 
 ### Chunk 2: npm "latest" pointed at a release candidate
 
@@ -46,3 +46,35 @@ Format: **what happened → how it was noticed → fix**.
   and uses up the monthly compute allowance, so the DB would stop partway through the month, likely while reviewers are testing.
 - **Noticed:** while planning the `/health` route and the worker, by checking what calls the DB and how often.
 - **Fix:** event-driven wake-ups (new event, retry timer, startup) instead of polling; `/health` never touches the DB.
+
+### Chunk 3: security and free-tier details in the login flow
+
+- **Installation hijack:** GitHub's post-install redirect carries an `installation_id` in the URL. Trusting it would let anyone
+  link someone else's installation to their account by editing the URL. Instead we list installations with the user's *own*
+  OAuth token (`GET /user/installations`) and link only those.
+- **No stored GitHub user tokens:** the token is used once during the callback and then discarded; the session only holds `userId`.
+- **Session pruning vs. Neon:** `connect-pg-simple` prunes expired sessions every 15 min by default, which would keep Neon awake.
+  Turned off; expired sessions are deleted on login instead.
+- **CSP blocked avatars:** helmet's default `img-src 'self'` would block GitHub avatar images; allowed `avatars.githubusercontent.com` explicitly.
+- `npm audit` reports high-severity `mysql2` issues from the Prisma **CLI** (dev tool only; we use Postgres). The suggested
+  "fix" downgrades Prisma to v6, so it was left as is.
+
+### Chunk 3: the "connect repo" flow only handled the first install
+
+- The AI designed the install flow assuming GitHub always redirects back to our callback after installing. In testing, the
+  app had been installed **after** I signed in (from the GitHub App's own page), so the DB had my user but 0 installations,
+  and "Connect repositories" opened `github.com/settings/installations/<id>`, which never redirects back.
+- **Noticed:** clicked "Connect repositories" and landed on GitHub's settings page; querying the DB showed `installations: []`.
+- **Fix:** a "Refresh" link re-runs sign-in (GitHub bounces back instantly) so the callback re-syncs; in Chunk 4 the
+  `installation` / `installation_repositories` webhooks keep repos in sync automatically.
+- Side lesson: a one-off DB script hung forever because the shared `pg` pool keeps Node alive; scripts must call `pool.end()`.
+
+### Chunk 4: webhook endpoint, tested locally with a signing script
+
+- Wrote `server/scripts/send-test-webhook.ts` to sign fake webhooks, so forgery and replay could be tested without GitHub.
+  Results: valid → 202 recorded; same delivery ID → 202 duplicate (nothing inserted); wrong secret → 401; no signature → 401.
+- Decision: a duplicate delivery returns **202**, not 409. An error would make GitHub mark the delivery failed and retry it.
+- Decision: dedupe with `createMany({ skipDuplicates: true })` on the unique `deliveryId` (count 0 = duplicate) instead of
+  try/catch on a unique-constraint error. It is one statement and has no race between "check" and "insert".
+- Near miss: the fake test event pointed at real issue #1 of the test repo; deleted it before building the worker so the
+  bot wouldn't label or comment on a real issue.
