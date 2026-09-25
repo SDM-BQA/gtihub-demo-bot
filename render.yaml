@@ -5,8 +5,9 @@ services:
     runtime: node
     plan: free
     # --include=dev: NODE_ENV=production also applies at build time, and without this flag
-    # npm would skip devDependencies (typescript, vite) and the build would fail.
-    buildCommand: npm ci --include=dev && npm run build
+    # npm would skip devDependencies (typescript, vite, prisma) and the build would fail.
+    # Migrations run at build time, not on start, to keep cold starts fast (GitHub gives webhooks only 10s).
+    buildCommand: npm ci --include=dev && npm run build && npm run db:deploy -w server
     startCommand: npm start
     healthCheckPath: /health
     envVars:
@@ -14,3 +15,8 @@ services:
         value: production
       - key: NODE_VERSION
         value: "22"
+      # Secrets: sync false means Render asks for the value in its dashboard; it is never stored in this file.
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false

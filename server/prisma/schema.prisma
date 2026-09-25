@@ -1,0 +1,161 @@
+generator client {
+  provider               = "prisma-client"
+  output                 = "../src/generated/prisma"
+  moduleFormat           = "esm"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// GitHub IDs are stored as BigInt: repo IDs are already past 1 billion and will outgrow a 32-bit Int.
+
+// A person who signed in with GitHub.
+model User {
+  id              Int            @id @default(autoincrement())
+  githubId        BigInt         @unique
+  login           String
+  avatarUrl       String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  installations   Installation[]
+}
+
+// One install of our GitHub App on a user/org account. A single installation can cover many repos.
+model Installation {
+  id                   Int       @id @default(autoincrement())
+  githubInstallationId BigInt    @unique
+  accountLogin         String
+  // Null until the installing user is verified (the setup callback checks the install against their own GitHub token).
+  userId               Int?
+  user                 User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  repos                Repo[]
+  createdAt            DateTime  @default(now())
+}
+
+model Repo {
+  id             Int          @id @default(autoincrement())
+  githubRepoId   BigInt       @unique
+  fullName       String // "owner/name"
+  // False when the repo is removed from the installation; we keep its history instead of deleting it.
+  active         Boolean      @default(true)
+  installationId Int
+  installation   Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  rules          Rule[]
+  events         Event[]
+  createdAt      DateTime     @default(now())
+}
+
+enum Trigger {
+  ISSUE_OPENED
+  PR_OPENED
+  PUSH
+}
+
+// "When <trigger> matches <all conditions>, do <actions>". Empty conditions match everything.
+model Rule {
+  id            Int         @id @default(autoincrement())
+  repoId        Int
+  repo          Repo        @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  name          String
+  trigger       Trigger
+  enabled       Boolean     @default(true)
+
+  // Conditions (all optional, combined with AND, case-insensitive)
+  titleContains String?
+  author        String?
+  hasLabel      String?
+
+  // Actions
+  addLabel      String?
+  comment       String?
+  notifySlack   Boolean     @default(false)
+  aiSummary     Boolean     @default(false)
+
+  actionLogs    ActionLog[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+enum EventStatus {
+  PENDING    // waiting for the worker (new, or scheduled for a retry)
+  PROCESSING // claimed by the worker
+  DONE
+  FAILED     // gave up after max attempts; visible in the dashboard
+  IGNORED    // nothing to do (unknown repo, bot sender, action we don't handle)
+}
+
+// One webhook delivery from GitHub. deliveryId is unique, so a redelivered or replayed webhook is stored only once.
+model Event {
+  id            Int         @id @default(autoincrement())
+  deliveryId    String      @unique // X-GitHub-Delivery header
+  githubEvent   String // X-GitHub-Event header: "issues", "pull_request", "push"
+  action        String? // payload.action: "opened", ...
+  repoId        Int?
+  repo          Repo?       @relation(fields: [repoId], references: [id], onDelete: SetNull)
+  payload       Json
+
+  // Normalized fields, copied out of the payload for the dashboard list
+  title         String?
+  author        String?
+  url           String?
+
+  // AI output (computed once per event, reused across retries)
+  aiSummary     String?
+  aiPriority    String?
+  aiLabel       String?
+
+  status        EventStatus @default(PENDING)
+  attempts      Int         @default(0)
+  nextAttemptAt DateTime    @default(now())
+  lastError     String?
+  receivedAt    DateTime    @default(now())
+  processedAt   DateTime?
+
+  actionLogs    ActionLog[]
+
+  @@index([status, nextAttemptAt]) // the worker's "what's due?" query
+  @@index([repoId, receivedAt])     // the dashboard's "latest events for my repos" query
+}
+
+enum ActionType {
+  ADD_LABEL
+  COMMENT
+  SLACK
+  AI_SUMMARY
+}
+
+enum ActionStatus {
+  SUCCESS
+  FAILED
+}
+
+// One side effect the bot performed (or tried to). The unique key is what makes retries safe:
+// an action already marked SUCCESS is skipped when the event is retried.
+model ActionLog {
+  id        Int          @id @default(autoincrement())
+  eventId   Int
+  event     Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ruleId    Int?
+  rule      Rule?        @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  type      ActionType
+  status    ActionStatus
+  attempts  Int          @default(1)
+  detail    String? // e.g. the label name, or "posted to #github-bot"
+  error     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([eventId, ruleId, type])
+}
+
+// Login sessions, stored by connect-pg-simple. Column names and types follow what that library expects.
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire])
+  @@map("session")
+}

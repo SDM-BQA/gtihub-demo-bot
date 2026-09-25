@@ -14,6 +14,11 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
 ## Stack
 
 - TypeScript everywhere. Node 22, Express, Prisma → Neon Postgres
+- Prisma is **pinned to 7.10.0** (npm's `latest` tag points to an 8.0 RC). Prisma 7 specifics: config lives in
+  `server/prisma.config.ts` (loads `../.env` itself), the client is generated into `server/src/generated/prisma` (gitignored)
+  and uses the `@prisma/adapter-pg` driver adapter. Import it from `db/prisma.ts` only.
+- Neon has two URLs: `DATABASE_URL` (pooled, the app) and `DIRECT_URL` (direct, migrations only). Migrations run during the Render build.
+- Schema changes: edit `schema.prisma` → `npm run db:migrate -w server -- --name <change>` → commit the migration folder.
 - React + Vite (in `client/`), built and served by Express, so there is one origin and one Render service
 - GitHub App via `octokit`, sessions via `express-session` + Postgres store, env validation via `zod`, logs via `pino`
 - Slack Incoming Webhook; AI via Groq free tier
@@ -23,6 +28,9 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
 
 - **Save first, process later.** The webhook route verifies the signature, inserts the Event, and replies 202. It does no other work.
 - The worker claims pending events with `FOR UPDATE SKIP LOCKED` and retries failed actions with backoff.
+- **No constant DB polling.** Neon's free tier suspends when idle and caps compute hours, so a 5-second poll would drain the
+  quota. The worker wakes only when (a) the webhook route saves a new event, (b) a retry timer for the next `nextAttemptAt` fires, or
+  (c) the server starts. `/health` never touches the DB (Render and the keep-alive pinger call it constantly).
 - Idempotency: `Event.deliveryId` is unique; `ActionLog` is unique on (eventId, actionType, value), so an action that already succeeded is skipped on retry.
 - Payloads are normalized once (`worker/normalize.ts`) so rules and actions never touch raw GitHub payloads.
 - Actions live in a registry (`worker/actions/`); one file per action. No if/else chains on action type.
@@ -49,4 +57,8 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
 
 - The developer (~9 months MERN, first bot) wants to understand every step. Before each chunk, explain the concept in a few lines, then write the code.
 - Work in the chunks listed in `docs/CHECKLIST.md`; suggest a commit at the end of each chunk.
-- When the developer says the AI got something wrong, add a short entry to `docs/ai-log.md` (what went wrong, how it was noticed, the fix). This feeds AI_NOTES.md.
+- At the end of **every** chunk, update `docs/ai-log.md` without being asked:
+  - decisions the developer made (and alternatives rejected)
+  - any AI mistake or near miss (what went wrong, how it was noticed, the fix), including ones the AI caught itself
+  This feeds `AI_NOTES.md` (the ~1-page deliverable, written by the developer in their own words; don't fill its TODOs with invented reasons).
+- Update this file when a new convention is set (new library, new pattern), so it always matches how the code is really written.
