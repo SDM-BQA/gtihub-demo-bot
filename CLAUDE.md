@@ -64,7 +64,7 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
   The session ID is regenerated on login.
 - Octokit clients come from `github/app.ts` (`githubApp`). For bot actions use `githubApp.getInstallationOctokit(id)`.
 - Every user-data query is scoped to the owner (`installation: { userId }`); anything not owned is a **404** (see
-  `services/rules.service.ts`). Request bodies go through `validateBody(zodSchema)`; route IDs go through `parseId`.
+  `services/ownership.service.ts`). Request bodies go through `validateBody(zodSchema)`; route IDs go through `parseId`.
 
 ## Working style with the developer
 
@@ -75,3 +75,9 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
   - any AI mistake or near miss (what went wrong, how it was noticed, the fix), including ones the AI caught itself
   This feeds `AI_NOTES.md` (the ~1-page deliverable, written by the developer in their own words; don't fill its TODOs with invented reasons).
 - Update this file when a new convention is set (new library, new pattern), so it always matches how the code is really written.
+
+## Frontend conventions
+
+- Server data is loaded through hooks (`useRules`, `usePolling`), never with fetch inside components; all HTTP goes through `api/client.ts`.
+- "Live" = `usePolling` every 5 s **only while the tab is visible** (no WebSockets; keeps Render/Neon free-tier load low).
+- Display logic (status wording, rule sentences, relative times) lives in `utils/`, so components stay mostly markup.

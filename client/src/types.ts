@@ -24,3 +24,36 @@ export type RuleInput = {
 };
 
 export type Rule = RuleInput & { id: number; repoId: number };
+
+export type EventStatus = 'PENDING' | 'PROCESSING' | 'DONE' | 'FAILED' | 'IGNORED';
+export type ActionType = 'ADD_LABEL' | 'COMMENT' | 'SLACK' | 'AI_SUMMARY';
+
+export type ActionLog = {
+  id: number;
+  type: ActionType;
+  status: 'SUCCESS' | 'FAILED';
+  attempts: number;
+  detail: string | null;
+  error: string | null;
+  rule: { name: string } | null; // null if the rule was deleted later
+};
+
+export type BotEvent = {
+  id: number;
+  githubEvent: string; // "issues" | "pull_request" | "push"
+  title: string | null;
+  author: string | null;
+  url: string | null;
+  status: EventStatus;
+  attempts: number;
+  nextAttemptAt: string;
+  lastError: string | null;
+  receivedAt: string;
+  processedAt: string | null;
+  aiSummary: string | null;
+  aiPriority: string | null;
+  aiLabel: string | null;
+  actionLogs: ActionLog[];
+};
+
+export type EventsResponse = { events: BotEvent[]; maxAttempts: number };

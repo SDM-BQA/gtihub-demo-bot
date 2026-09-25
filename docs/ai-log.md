@@ -127,3 +127,12 @@ Format: **what happened → how it was noticed → fix**.
   (an empty `titleContains` would otherwise be stored as "" and is easy to mistake for a real condition); at least one action required.
 - Refactor: rule *matching* moved to `worker/matchRules.ts` (only the worker uses it); `services/rules.service.ts` is now CRUD.
 - UI: repo sidebar → rules panel; one `RuleForm` reused for create and edit; the toggle reuses PUT (no separate PATCH endpoint).
+
+### Chunk 7: dashboard activity log
+
+- Decision: polling every 5 s instead of WebSockets/SSE: simpler, works with Render's free tier, and `usePolling` pauses
+  while the tab is hidden so an idle open tab doesn't keep Neon awake.
+- The API never sends `Event.payload` to the browser (issue bodies can be private); verified the JSON has no "payload" key.
+- Shared the ownership checks between the rules and events services (`services/ownership.service.ts`) instead of copying them.
+- Status wording is derived on the client (`utils/events.ts`): PENDING with attempts > 0 shows as "Retrying — attempt n/5 in X",
+  so the retry/backoff state (S5) is visible without extra columns.
