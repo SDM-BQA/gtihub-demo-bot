@@ -1,0 +1,16 @@
+# Render Blueprint: one free web service that serves both the API and the React build.
+services:
+  - type: web
+    name: github-automation-bot
+    runtime: node
+    plan: free
+    # --include=dev: NODE_ENV=production also applies at build time, and without this flag
+    # npm would skip devDependencies (typescript, vite) and the build would fail.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
