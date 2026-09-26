@@ -16,6 +16,7 @@ export function matchesRule(rule: Rule, event: NormalizedEvent): boolean {
 // The actions a rule asks for, in the order they run. Label and comment need an issue/PR number, so pushes only get Slack.
 export function plannedActions(rule: Rule, event: NormalizedEvent): ActionType[] {
   const actions: ActionType[] = [];
+  if (rule.aiSummary) actions.push('AI_SUMMARY');
   if (rule.addLabel && event.number !== null) actions.push('ADD_LABEL');
   if (rule.comment && event.number !== null) actions.push('COMMENT');
   if (rule.notifySlack) actions.push('SLACK');

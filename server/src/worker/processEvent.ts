@@ -30,19 +30,22 @@ export async function processEvent(eventId: number): Promise<ProcessResult> {
   const installationId = Number(record.repo.installation.githubInstallationId);
   const errors: string[] = [];
 
-  for (const rule of matchingRules) {
-    for (const type of plannedActions(rule, event)) {
-      if (alreadyDone(rule.id, type)) continue;
+  // AI summaries run first (across all rules), so every Slack message for this event can include the summary.
+  const planned = matchingRules
+    .flatMap((rule) => plannedActions(rule, event).map((type) => ({ rule, type })))
+    .sort((a, b) => Number(b.type === 'AI_SUMMARY') - Number(a.type === 'AI_SUMMARY'));
 
-      try {
-        const detail = await actionRunners[type]!({ eventId, installationId, event, rule });
-        await recordAction(eventId, rule.id, type, 'SUCCESS', { detail });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        errors.push(`${type} (rule "${rule.name}"): ${message}`);
-        await recordAction(eventId, rule.id, type, 'FAILED', { error: message });
-        logger.warn({ eventId, ruleId: rule.id, action: type, err: message }, 'action failed');
-      }
+  for (const { rule, type } of planned) {
+    if (alreadyDone(rule.id, type)) continue;
+
+    try {
+      const detail = await actionRunners[type]({ eventId, installationId, event, rule });
+      await recordAction(eventId, rule.id, type, 'SUCCESS', { detail });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push(`${type} (rule "${rule.name}"): ${message}`);
+      await recordAction(eventId, rule.id, type, 'FAILED', { error: message });
+      logger.warn({ eventId, ruleId: rule.id, action: type, err: message }, 'action failed');
     }
   }
 

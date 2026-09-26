@@ -88,6 +88,10 @@ export function RuleForm({ initial, submitLabel, onSubmit, onCancel }: Props) {
           <input type="checkbox" checked={form.notifySlack} onChange={(e) => set('notifySlack', e.target.checked)} />
           Send a Slack alert
         </label>
+        <label className="check">
+          <input type="checkbox" checked={form.aiSummary} onChange={(e) => set('aiSummary', e.target.checked)} />
+          AI triage: one-line summary, priority and a suggested label (shown in Slack and the activity log)
+        </label>
       </fieldset>
 
       {error && <p className="error">{error}</p>}

@@ -40,7 +40,7 @@ Every item from the assignment brief, with how we meet it. Tick an item only aft
 - [ ] **D1** GitHub repo with a clear commit history (one commit per chunk)
 - [x] **D2** Live URL that works on first open (keep-alive pinger for Render's free-tier sleep)
 - [x] **D3** README: what it does, local setup, env vars, `.env.example`, how and where it is deployed
-- [ ] **D4** Way for reviewers to test: a public demo repo, a Slack channel invite link, step-by-step instructions
+- [x] **D4** Way for reviewers to test: a public demo repo, a Slack channel invite link, step-by-step instructions
 - [ ] **D5** AI context files exactly as used: `CLAUDE.md` (kept up to date from day 1)
 - [ ] **D6** AI_NOTES.md (~1 page): tools and models, how work was split, 2–3 decisions made by me and why, the hardest AI-caused bug, improvements
 

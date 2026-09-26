@@ -21,7 +21,8 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
 - Schema changes: edit `schema.prisma` → `npm run db:migrate -w server -- --name <change>` → commit the migration folder.
 - React + Vite (in `client/`), built and served by Express, so there is one origin and one Render service
 - GitHub App via `octokit`, sessions via `express-session` + Postgres store, env validation via `zod`, logs via `pino`
-- Slack Incoming Webhook; AI via Groq free tier
+- Slack Incoming Webhook; AI via Groq free tier (`services/ai.service.ts`, model from `GROQ_MODEL`). AI output is
+  **display-only**: never auto-apply its label/priority (prompt injection). Issue text goes inside `<issue>` tags.
 - Hosting: Render free tier. Everything must be free with no credit card.
 
 ## Architecture rules

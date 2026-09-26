@@ -38,3 +38,5 @@ services:
         sync: false
       - key: SLACK_WEBHOOK_URL
         sync: false
+      - key: GROQ_API_KEY
+        sync: false

@@ -22,6 +22,10 @@ const envSchema = z.object({
 
   // Slack Incoming Webhook (api.slack.com/apps → your app → Incoming Webhooks). Anyone with this URL can post to the channel.
   SLACK_WEBHOOK_URL: z.url(),
+
+  // Groq (console.groq.com, free tier, no card). Used by the "AI summary" rule action.
+  GROQ_API_KEY: z.string().min(1),
+  GROQ_MODEL: z.string().default('openai/gpt-oss-20b'),
 });
 
 const parsed = envSchema.safeParse(process.env);
