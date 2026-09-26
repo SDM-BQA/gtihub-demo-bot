@@ -34,7 +34,9 @@ Requirements tracker: `docs/CHECKLIST.md`. Check new work against it.
 - **No constant DB polling.** Neon's free tier suspends when idle and caps compute hours, so a 5-second poll would drain the
   quota. The worker wakes only when (a) the webhook route saves a new event, (b) a retry timer for the next `nextAttemptAt` fires, or
   (c) the server starts. `/health` never touches the DB (Render and the keep-alive pinger call it constantly).
-- Idempotency: `Event.deliveryId` is unique; `ActionLog` is unique on (eventId, actionType, value), so an action that already succeeded is skipped on retry.
+- `worker/redeliverySweeper.ts` recovers webhooks GitHub gave up on (GitHub never retries on its own): it redelivers failed
+  deliveries 30 s after start and every 30 min. It only calls GitHub's API, never the DB.
+- Idempotency: `Event.deliveryId` is unique; `ActionLog` is unique on (eventId, ruleId, type), so an action that already succeeded is skipped on retry.
 - Webhook flow: `routes/webhook.routes.ts` (express.raw) → `middleware/verifyGithubSignature.ts` → `webhooks/handlers.ts`
   (a lookup table keyed by `X-GitHub-Event`). Duplicates return **202**, not an error, so GitHub doesn't retry them.
 - Payloads are normalized once (`github/normalize.ts`) so rules and actions never touch raw GitHub payloads.

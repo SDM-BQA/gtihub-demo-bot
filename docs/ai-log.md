@@ -136,3 +136,17 @@ Format: **what happened → how it was noticed → fix**.
 - Shared the ownership checks between the rules and events services (`services/ownership.service.ts`) instead of copying them.
 - Status wording is derived on the client (`utils/events.ts`): PENDING with attempts > 0 shows as "Retrying — attempt n/5 in X",
   so the retry/backoff state (S5) is visible without extra columns.
+
+### Step 9: hardening
+
+- **Redelivery sweeper** (`worker/redeliverySweeper.ts`): 30 s after start and every 30 min, lists the app's webhook deliveries
+  (last 2 days), groups them by GUID, and asks GitHub to redeliver any GUID with no 2xx (max 3 attempts per GUID so a permanently
+  failing delivery doesn't loop). First real run recovered **5** deliveries lost earlier (timeouts during Render cold starts,
+  404s from before the route existed, one 401 from the secret mismatch) → all 202. A second run redelivered 0.
+- Needed `Map.groupBy` (ES2024): bumped the server `tsconfig` target from ES2023 to ES2024 (Node 22 supports it).
+- Live checks: forged signature → 401, missing signature → 401; the bot's own `issues.labeled` events (sender type `Bot`)
+  → "ignored", so it can't trigger itself.
+- **Secret scan:** compared every real `.env` value plus key/token patterns against `git log -p`. Our 7 commits: 0 hits.
+  The first scan used `--all` and reported a PEM key in "6440 commits"; the cause was an unrelated second remote
+  (a company backend repo) fetched into this folder, whose history contains Firebase service-account keys. Lesson: scan the
+  branches you actually publish (`main`, `origin/main`), and check `git remote -v` in submission repos.
