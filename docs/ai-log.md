@@ -11,7 +11,7 @@ Tools: Claude Code (VS Code extension), model Claude Opus 5.5.
 | --- | --- | --- | --- |
 | 0 | Postgres on Neon | AI recommended MongoDB Atlas (familiar to me from MERN) | Suggested in the brief; Postgres row locking (`FOR UPDATE SKIP LOCKED`) makes the job queue safe |
 | 0 | GitHub App instead of an OAuth App | OAuth App plus a per-repo webhook | One webhook URL for all repos, short-lived installation tokens, multi-repo support for free |
-| 0 | TypeScript | AI suggested plain JS to save time | _fill in_ |
+| 0 | TypeScript | AI suggested plain JS to save time | Type safety across webhook payloads, Prisma models and API responses |
 
 ## Where the AI went wrong (or nearly did)
 

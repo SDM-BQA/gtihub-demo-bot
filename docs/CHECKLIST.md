@@ -13,7 +13,7 @@ Every item from the assignment brief, with how we meet it. Tick an item only aft
 
 ## Stretch goals
 - [x] **S1** Rules configurable in the UI: match on keywords, author and labels
-- [ ] **S2** AI step: summary, suggested label and priority, shown in Slack **and** on the dashboard (Groq, free tier)
+- [x] **S2** AI step: summary, suggested label and priority, shown in Slack **and** on the dashboard (Groq, free tier)
 - [x] **S3** Authenticate as a GitHub App: JWT → installation tokens (octokit)
 - [ ] **S4** Multiple repos per user: one installation can cover many repos; rules are scoped per repo
 - [x] **S5** Observability: structured logs (pino) and a visible history of failures and retries in the dashboard
@@ -34,17 +34,17 @@ Every item from the assignment brief, with how we meet it. Tick an item only aft
 - [x] Bot does not trigger itself (acts only on `opened`, ignores `sender.type === "Bot"`)
 
 ## Constraints
-- [ ] Every service is free with no card: Render, Neon, GitHub, Slack, Groq, cron-job.org
+- [x] Every service is free with no card: Render, Neon, GitHub, Slack, Groq, cron-job.org
 
 ## Deliverables
 - [ ] **D1** GitHub repo with a clear commit history (one commit per chunk)
 - [x] **D2** Live URL that works on first open (keep-alive pinger for Render's free-tier sleep)
 - [x] **D3** README: what it does, local setup, env vars, `.env.example`, how and where it is deployed
 - [x] **D4** Way for reviewers to test: a public demo repo, a Slack channel invite link, step-by-step instructions
-- [ ] **D5** AI context files exactly as used: `CLAUDE.md` (kept up to date from day 1)
-- [ ] **D6** AI_NOTES.md (~1 page): tools and models, how work was split, 2–3 decisions made by me and why, the hardest AI-caused bug, improvements
+- [x] **D5** AI context files exactly as used: `CLAUDE.md` (kept up to date from day 1)
+- [x] **D6** AI_NOTES.md (~1 page): tools and models, how work was split, 2–3 decisions made by me and why, the hardest AI-caused bug, improvements
 
 ## Final check (before submitting)
 - [ ] Full flow tested from a **different GitHub account** on the live URL
-- [ ] Forged request → 401; redelivered request → no second comment; Slack URL broken → retries shown, then recovered
+- [x] Forged request → 401; redelivered request → no second comment; Slack URL broken → retries shown, then recovered
 - [x] `git log` has no secrets (scan the history, not just the current files)
